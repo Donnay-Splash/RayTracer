@@ -17,6 +17,10 @@
     <ClCompile Include="MainPage.xaml.cpp" />
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="Renderer.xaml.cpp" />
+    <ClCompile Include="Ray.cpp" />
+    <ClCompile Include="SimpleMath.cpp" />
+    <ClCompile Include="Sphere.cpp" />
+    <ClCompile Include="HitableList.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
@@ -24,6 +28,11 @@
     <ClInclude Include="MainPage.xaml.h" />
     <ClInclude Include="Renderer.xaml.h" />
     <ClInclude Include="SimpleMath.h" />
+    <ClInclude Include="Ray.h" />
+    <ClInclude Include="Hitable.h" />
+    <ClInclude Include="Sphere.h" />
+    <ClInclude Include="HitableList.h" />
+    <ClInclude Include="Camera.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Assets\LockScreenLogo.scale-200.png">
@@ -53,6 +62,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="PathTracer_TemporaryKey.pfx" />
+    <None Include="SimpleMath.inl" />
   </ItemGroup>
   <ItemGroup>
     <Page Include="MainPage.xaml" />

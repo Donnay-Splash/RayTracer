@@ -43,6 +43,6 @@ void PathTracer::MainPage::OnKeyUp(Platform::Object^ object, Windows::UI::Xaml::
 
 void PathTracer::MainPage::OnSizeChanged(Platform::Object ^sender, Windows::UI::Xaml::SizeChangedEventArgs ^e)
 {
-    _renderer->Render();
-
+    auto windowSize = e->NewSize;
+    _renderer->Render(windowSize.Width, windowSize.Height);
 }
