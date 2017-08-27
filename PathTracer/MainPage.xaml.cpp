@@ -25,7 +25,7 @@ using namespace Windows::UI::Xaml::Navigation;
 
 MainPage::MainPage()
 {
-	InitializeComponent();
+    InitializeComponent();
     KeyUp += ref new Windows::UI::Xaml::Input::KeyEventHandler(this, &PathTracer::MainPage::OnKeyUp);
     SizeChanged += ref new Windows::UI::Xaml::SizeChangedEventHandler(this, &PathTracer::MainPage::OnSizeChanged);
     _renderer->KeyUp += ref new Windows::UI::Xaml::Input::KeyEventHandler(this, &PathTracer::MainPage::OnKeyUp);
@@ -44,5 +44,5 @@ void PathTracer::MainPage::OnKeyUp(Platform::Object^ object, Windows::UI::Xaml::
 void PathTracer::MainPage::OnSizeChanged(Platform::Object ^sender, Windows::UI::Xaml::SizeChangedEventArgs ^e)
 {
     auto windowSize = e->NewSize;
-    _renderer->Render(windowSize.Width, windowSize.Height);
+    _renderer->Render((int)windowSize.Width, (int)windowSize.Height);
 }

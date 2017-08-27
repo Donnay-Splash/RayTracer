@@ -8,7 +8,7 @@ namespace PathTracer
     class Ray
     {
     public:
-        Ray();
+        Ray() {}
         Ray(const Vector3& endPoint, const Vector3& direction) 
             : m_endPoint(endPoint), m_direction(direction){}
 

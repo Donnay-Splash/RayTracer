@@ -9,16 +9,18 @@
 #include "Renderer.g.h"
 #include "HitableList.h"
 
+#include <Threading\ThreadPool.h>
+
 namespace PathTracer
 {
-	/// <summary>
-	/// An empty page that can be used on its own or navigated to within a Frame.
-	/// </summary>
-	[Windows::Foundation::Metadata::WebHostHidden]
-	public ref class Renderer sealed
-	{
-	public:
-		Renderer();
+    /// <summary>
+    /// An empty page that can be used on its own or navigated to within a Frame.
+    /// </summary>
+    [Windows::Foundation::Metadata::WebHostHidden]
+    public ref class Renderer sealed
+    {
+    public:
+        Renderer();
 
         void Render(int width, int height);
     private:
@@ -28,6 +30,8 @@ namespace PathTracer
         void OnDragEnter(Platform::Object ^sender, Windows::UI::Xaml::DragEventArgs ^e);
 
         HitableList::Ptr m_scene;
+
+        Utils::Threading::ThreadPool m_threadPool;
         
     };
 }

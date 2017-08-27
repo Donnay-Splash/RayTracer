@@ -5,7 +5,6 @@
 
 #include "pch.h"
 
-#include <iostream>
 #include <random>
 
 #include "Renderer.xaml.h"
@@ -15,6 +14,8 @@
 #include "Sphere.h"
 #include "Ray.h"
 #include "Camera.h"
+
+#include <Threading\ThreadPool.h>
 
 using namespace PathTracer;
 
@@ -35,17 +36,27 @@ using namespace DirectX;
 // Anonymous namespace 
 namespace
 {
-    static const int kMaxBounces = 100;
+    static const int kMaxBounces = 40;
+    static const int kThreadCount = 4;
+
+    static std::default_random_engine generator;
+    static std::uniform_real_distribution<float> distribution;
 }
 
-Renderer::Renderer()
+float kRand()
+{
+    return distribution(generator);
+}
+
+Renderer::Renderer():
+    m_threadPool(kThreadCount)
 {
     InitializeComponent();
 
     m_scene = std::make_shared<HitableList>();
     auto sphere = std::make_shared<Sphere>(Vector3(0.0f, 0.0f, -1.0f), 0.5f);
     m_scene->AddObjectToScene(sphere);
-    auto sphere2 = std::make_shared<Sphere>(Vector3(0.0f, -100.5f, -1.0f), 100);
+    auto sphere2 = std::make_shared<Sphere>(Vector3(0.0f, -100.5f, -1.0f), 100.0f);
     m_scene->AddObjectToScene(sphere2);
 }
 
@@ -55,7 +66,7 @@ float HitSphere(const Vector3& centre, float radius, const Ray& ray)
     float a = Vector3::Dot(ray.Direction(), ray.Direction());
     float b = 2.0f * Vector3::Dot(oc, ray.Direction());
     float c = Vector3::Dot(oc, oc) - (radius * radius);
-    float discriminant = b*b - 4.0*a*c;
+    float discriminant = b*b - 4.0f*a*c;
 
     if (discriminant < 0) return -1.0f;
 
@@ -65,12 +76,9 @@ float HitSphere(const Vector3& centre, float radius, const Ray& ray)
 Vector3 RandomInUnitSphere()
 {
     Vector3 point;
-    std::default_random_engine generator;
-    std::uniform_real_distribution<float> distribution;
-    auto randOffset = std::bind(distribution, generator);
     do 
     {
-        point = 2.0f * Vector3(randOffset(), randOffset(), randOffset()) - Vector3::kOne;
+        point = 2.0f * Vector3(kRand(), kRand(), kRand()) - Vector3::kOne;
     } while (Vector3::Dot(point, point) >= 1.0f);
 
     return point;
@@ -85,58 +93,89 @@ Color color(const Ray& ray, Hitable::Ptr world, int bounce)
         return 0.5f * color(Ray(data.Position, target - data.Position), world, bounce + 1);
     }
     Vector3 unitDirection = Vector3::Normalise(ray.Direction());
-    float t = 0.5 * (unitDirection.y + 1.0f);
+    float t = 0.5f * (unitDirection.y + 1.0f);
     return Color::Lerp({1.0f, 1.0f, 1.0f, 1.0f}, {0.3f, 0.4f, 1.0f, 1.0f}, t);
 }
 
 void Renderer::Render(int imageWidth, int imageHeight)
 {
-    std::default_random_engine generator;
-    std::uniform_real_distribution<float> distribution;
-    auto randOffset = std::bind(distribution, generator);
+    const int width = 256;
+    const int height = 256;
+    const int samples = 30;
 
-    const int width = 200;
-    const int height = 100;
-    const int samples = 10;
-
-    Vector3 lowerLeftCorner(-2.0f, -1.0f, -1.0f);
-    Vector3 horizontal(4.0f, 0.0f, 0.0f);
-    Vector3 vertical(0.0f, 2.0f, 0.0f);
-    Vector3 origin(0.0f, 0.0f, 0.0f);
     std::vector<uint8_t> pixels;
-    Camera camera;
-    for (int j = height - 1; j >= 0; j--)
+    pixels.resize(height * width * 4);
+
+    auto renderFunc = [=](int startHeight, int startWidth, int endHeight, int endWidth, uint8_t* pixelData)
     {
-        for (int i = 0; i < width; i++)
+        Camera camera;
+        for (int j = startHeight; j < endHeight; j++)
         {
-            float floatingHeight = static_cast<float>(height);
-            float floatingWidth = static_cast<float>(width);
-            Color hitColor(0.0f, 0.0f, 0.0f, 0.0f);
-            for (int sample = 0; sample < samples; sample++)
+            for (int i = startWidth; i < endWidth; i++)
             {
-                float u = (float(i + randOffset())/ floatingWidth);
-                float v = (float(j + randOffset())/ floatingHeight);
-                auto ray = camera.GetRay(u, v);
+                float floatingHeight = static_cast<float>(height);
+                float floatingWidth = static_cast<float>(width);
+                Color hitColor(0.0f, 0.0f, 0.0f, 0.0f);
+                for (int sample = 0; sample < samples; sample++)
+                {
+                    float u = (float(i + kRand()) / floatingWidth);
+                    float v = (float(j + kRand()) / floatingHeight);
+                    auto ray = camera.GetRay(u, v);
 
-                hitColor += color(ray, m_scene, 0);
+                    hitColor += color(ray, m_scene, 0);
+                }
+
+                hitColor /= float(samples);
+                hitColor.w = 1.0f;
+                hitColor = hitColor.GammaEncode();
+                uint8_t ir = static_cast<uint8_t>(hitColor.x * 255.99f);
+                uint8_t ig = static_cast<uint8_t>(hitColor.y * 255.99f);
+                uint8_t ib = static_cast<uint8_t>(hitColor.z * 255.99f);
+                uint8_t ia = static_cast<uint8_t>(hitColor.w * 255.99f);
+
+
+                // Fill pixel data in BGRA8 format
+                int index = (((height - 1 - j) * width) + i) * 4;
+                pixelData[index] = ib;
+                pixelData[index + 1] = ig;
+                pixelData[index + 2] = ir;
+                pixelData[index + 3] = ia;
             }
-            
-            hitColor /= float(samples);
-            hitColor.w = 1.0f;
-            hitColor = hitColor.GammaEncode();
-            uint8_t ir = static_cast<uint8_t>(hitColor.x * 255.99f);
-            uint8_t ig = static_cast<uint8_t>(hitColor.y * 255.99f);
-            uint8_t ib = static_cast<uint8_t>(hitColor.z * 255.99f);
-            uint8_t ia = static_cast<uint8_t>(hitColor.w * 255.99f);
+        }
+    };
 
-            
-            // Fill pixel data in BGRA8 format
-            pixels.push_back(ib);
-            pixels.push_back(ig);
-            pixels.push_back(ir);
-            pixels.push_back(ia);
+    std::vector<Utils::Threading::ThreadPool::TaskFuture<void>> tasks;
+    int threadSplit = kThreadCount / 2;
+    int heightDelta = height / threadSplit;
+    int widthDelta = width / threadSplit;
+    for (int i = 0; i < threadSplit; i++)
+    {
+        for (int j = 0; j < threadSplit; j++)
+        {
+            int startWidth = widthDelta * i;
+            int startHeight = heightDelta * j;
+            int endWidth = startWidth + widthDelta;
+            int endHeight = startHeight + heightDelta;
+            auto future = m_threadPool.Submit([=, &pixels]()
+            {
+                renderFunc(startHeight, startWidth, endHeight, endWidth, pixels.data());
+            });
+
+            tasks.push_back(std::move(future));
         }
     }
+
+    for (auto& task : tasks)
+    {
+        task.Get();
+    }
+
+    /*auto future = m_threadPool.Submit([=, &pixels]()
+    {
+        renderFunc(127, 119, 128, 120, pixels.data());
+    });
+
+    future.Get();*/
 
     SaveToScreen(pixels.data(), width, height);
 }
