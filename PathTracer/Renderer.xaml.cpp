@@ -5,8 +5,6 @@
 
 #include "pch.h"
 
-#include <random>
-
 #include "Renderer.xaml.h"
 #include "Robuffer.h"
 #include "DirectXHelpers.h"
@@ -38,14 +36,6 @@ namespace
 {
     static const int kMaxBounces = 40;
     static const int kThreadCount = 4;
-
-    static std::default_random_engine generator;
-    static std::uniform_real_distribution<float> distribution;
-}
-
-float kRand()
-{
-    return distribution(generator);
 }
 
 Renderer::Renderer():
@@ -54,10 +44,16 @@ Renderer::Renderer():
     InitializeComponent();
 
     m_scene = std::make_shared<HitableList>();
-    auto sphere = std::make_shared<Sphere>(Vector3(0.0f, 0.0f, -1.0f), 0.5f);
+    auto sphere = std::make_shared<Sphere>(Vector3(0.0f, 0.0f, -1.0f), 0.5f, std::make_shared<Lambertian>(Color(0.8f, 0.8f, 0.3f, 1.0f)));
     m_scene->AddObjectToScene(sphere);
-    auto sphere2 = std::make_shared<Sphere>(Vector3(0.0f, -100.5f, -1.0f), 100.0f);
-    m_scene->AddObjectToScene(sphere2);
+    sphere = std::make_shared<Sphere>(Vector3(0.0f, -100.5f, -1.0f), 100.0f, std::make_shared<Lambertian>(Color(0.8f, 1.0f, 0.3f, 1.0f)));
+    m_scene->AddObjectToScene(sphere);
+    sphere = std::make_shared<Sphere>(Vector3(1.0f, 0.0f, -1.0f), 0.5f, std::make_shared<Metal>(Color(1.0f, 1.0f, 1.0f, 1.0f), 0.75f));
+    m_scene->AddObjectToScene(sphere);
+    sphere = std::make_shared<Sphere>(Vector3(-1.0f, 0.0f, -1.0f), 0.5f, std::make_shared<Dielectric>(1.5f));
+    m_scene->AddObjectToScene(sphere);
+    sphere = std::make_shared<Sphere>(Vector3(-1.0f, 0.0f, -1.0f), -0.45f, std::make_shared<Dielectric>(1.5f));
+    m_scene->AddObjectToScene(sphere);
 }
 
 float HitSphere(const Vector3& centre, float radius, const Ray& ray)
@@ -73,24 +69,21 @@ float HitSphere(const Vector3& centre, float radius, const Ray& ray)
     return (-b - sqrt(discriminant)) / (2.0f * a);
 }
 
-Vector3 RandomInUnitSphere()
-{
-    Vector3 point;
-    do 
-    {
-        point = 2.0f * Vector3(kRand(), kRand(), kRand()) - Vector3::kOne;
-    } while (Vector3::Dot(point, point) >= 1.0f);
-
-    return point;
-}
-
 Color color(const Ray& ray, Hitable::Ptr world, int bounce)
 {
     HitData data;
     if(world->Hit(ray, 0.0f, FLT_MAX, data) && bounce <= kMaxBounces)
     {
-        Vector3 target = data.Position + data.Normal + RandomInUnitSphere();
-        return 0.5f * color(Ray(data.Position, target - data.Position), world, bounce + 1);
+        Ray scattered;
+        Color attenuation;
+        if (data.Material->Scatter(ray, data, attenuation, scattered))
+        {
+            return attenuation*color(scattered, world, bounce + 1);
+        }
+        else
+        {
+            return Color(0.0f, 0.0f, 0.0f, 1.0f);
+        }
     }
     Vector3 unitDirection = Vector3::Normalise(ray.Direction());
     float t = 0.5f * (unitDirection.y + 1.0f);
@@ -99,9 +92,9 @@ Color color(const Ray& ray, Hitable::Ptr world, int bounce)
 
 void Renderer::Render(int imageWidth, int imageHeight)
 {
-    const int width = 256;
-    const int height = 256;
-    const int samples = 30;
+    const int width = 500;
+    const int height = 500;
+    const int samples = 100;
 
     std::vector<uint8_t> pixels;
     pixels.resize(height * width * 4);
@@ -118,8 +111,8 @@ void Renderer::Render(int imageWidth, int imageHeight)
                 Color hitColor(0.0f, 0.0f, 0.0f, 0.0f);
                 for (int sample = 0; sample < samples; sample++)
                 {
-                    float u = (float(i + kRand()) / floatingWidth);
-                    float v = (float(j + kRand()) / floatingHeight);
+                    float u = (float(i + Math::kRand()) / floatingWidth);
+                    float v = (float(j + Math::kRand()) / floatingHeight);
                     auto ray = camera.GetRay(u, v);
 
                     hitColor += color(ray, m_scene, 0);

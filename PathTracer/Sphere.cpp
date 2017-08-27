@@ -14,6 +14,7 @@ namespace PathTracer
 
         if (discriminant > 0)
         {
+            data.Material = m_material.get();
             float temp = (-b - sqrt(discriminant)) / a;
             if (temp < stepMax && temp > stepMin)
             {

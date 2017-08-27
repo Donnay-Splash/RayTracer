@@ -115,10 +115,11 @@ namespace Math
     {
         Vector3() : XMFLOAT3(0.f, 0.f, 0.f) {}
         Vector3(float x, float y, float z) : XMFLOAT3(x, y, z) {}
+        Vector3& operator=(const Vector3&) = default;
 
         float Length() const
         {
-            sqrt((x*x) + (y*y) + (z*z));
+            return sqrt((x*x) + (y*y) + (z*z));
         }
 
         void Normalise()
@@ -234,9 +235,59 @@ namespace Math
     Vector3 operator- (const Vector3& LHS, const Vector3& RHS);
     Vector3 operator* (const Vector3& LHS, const Vector3& RHS);
     Vector3 operator* (const Vector3& LHS, float S);
+    Vector3 operator* (float S, const Vector3& RHS);
     Vector3 operator/ (const Vector3& LHS, float S);
+    Vector3 operator/ (float S, const Vector3& RHS);
     Vector3 operator/ (const Vector3& LHS, const Vector3& RHS);
     Vector3 operator* (float S, const Vector3& RHS);
+    Vector3 operator- (const Vector3& RHS);
+
+    static Vector3 Reflect(const Vector3& vec, const Vector3& normal)
+    {
+        return vec - 2.0f * Vector3::Dot(vec, normal) * normal;
+    }
+
+    static bool Refract(const Vector3& vec, const Vector3& normal, float niOverNt, Vector3& refracted)
+    {
+        auto unitVec = Vector3::Normalise(vec);
+        float dot = Vector3::Dot(unitVec, normal);
+        float discriminant = 1.0f - niOverNt*niOverNt*(1.0f - dot*dot);
+        if (discriminant > 0)
+        {
+            refracted = niOverNt*(unitVec - normal*dot) - normal*sqrt(discriminant);
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    // Helper functions
+    static float kRand()
+    {
+        static std::default_random_engine generator;
+        static std::uniform_real_distribution<float> distribution;
+        return distribution(generator);
+    }
+
+    static Vector3 RandomInUnitSphere()
+    {
+        Vector3 point;
+        do
+        {
+            point = 2.0f * Vector3(kRand(), kRand(), kRand()) - Vector3::kOne;
+        } while (Vector3::Dot(point, point) >= 1.0f);
+
+        return point;
+    }
+
+    static float Schlick(float cosine, float ri)
+    {
+        float f0 = (1.0f - ri) / (1.0f + ri);
+        f0 = f0*f0;
+        return f0 + (1.0f - f0)*pow((1.0f - cosine), 5);
+    }
 
 }// End Namespace Math
 }// End Namespace PathTracer

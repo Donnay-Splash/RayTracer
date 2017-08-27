@@ -52,17 +52,25 @@ namespace PathTracer
         {
             return Vector3(LHS.x * S, LHS.y * S, LHS.z * S);
         }
+        inline Vector3 operator* (float S, const Vector3& RHS)
+        {
+            return RHS * S;
+        }
         inline Vector3 operator/ (const Vector3& LHS, float S)
         {
             return Vector3(LHS.x / S, LHS.y / S, LHS.z / S);
+        }
+        inline Vector3 operator/ (float S, const Vector3& RHS)
+        {
+            return RHS / S;
         }
         inline Vector3 operator/ (const Vector3& LHS, const Vector3& RHS)
         {
             return Vector3(LHS.x / RHS.x, LHS.y / RHS.y, LHS.z / RHS.z);
         }
-        inline Vector3 operator* (float S, const Vector3& RHS)
+        inline Vector3 operator- (const Vector3& RHS)
         {
-            return Vector3(RHS.x * S, RHS.y * S, RHS.z * S);
+            return Vector3(-RHS.x, -RHS.y, -RHS.z);
         }
     }
 }

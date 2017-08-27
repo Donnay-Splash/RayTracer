@@ -11,5 +11,6 @@
 #include <collection.h>
 #include <ppltasks.h>
 #include <DirectXMath.h>
+#include <random>
 
 #include "App.xaml.h"
